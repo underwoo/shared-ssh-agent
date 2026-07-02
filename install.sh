@@ -299,32 +299,65 @@ bootstrap_download() {
     print_info "Downloading shared-ssh-agent from GitHub..."
     
     local temp_dir="/tmp/shared-ssh-agent-bootstrap-$$"
-    mkdir -p "$temp_dir"
+    mkdir -p "$temp_dir" || {
+        print_error "Failed to create temp directory"
+        exit 1
+    }
     
     # Try git first, then curl + tar
     if command -v git >/dev/null 2>&1; then
         print_info "Using git to clone repository..."
-        git clone --depth 1 "$GITHUB_REPO" "$temp_dir" >/dev/null 2>&1 || {
+        if git clone --depth 1 "$GITHUB_REPO" "$temp_dir" 2>&1; then
+            print_success "Downloaded successfully"
+        else
             print_error "Failed to clone repository"
             rm -rf "$temp_dir"
             exit 1
-        }
+        fi
     elif command -v curl >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
         print_info "Using curl to download tarball..."
-        curl -fsSL "${GITHUB_REPO%.git}/archive/refs/heads/main.tar.gz" | \
-            tar -xz -C "$temp_dir" --strip-components=1 2>/dev/null || {
+        if curl -fsSL "${GITHUB_REPO%.git}/archive/refs/heads/main.tar.gz" | \
+            tar -xz -C "$temp_dir" --strip-components=1 2>&1; then
+            print_success "Downloaded successfully"
+        else
             print_error "Failed to download tarball"
             rm -rf "$temp_dir"
             exit 1
-        }
+        fi
+    elif command -v wget >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
+        print_info "Using wget to download tarball..."
+        if wget -qO- "${GITHUB_REPO%.git}/archive/refs/heads/main.tar.gz" | \
+            tar -xz -C "$temp_dir" --strip-components=1 2>&1; then
+            print_success "Downloaded successfully"
+        else
+            print_error "Failed to download tarball"
+            rm -rf "$temp_dir"
+            exit 1
+        fi
     else
-        print_error "Neither git nor curl+tar available for downloading"
-        print_info "Please install git or curl, or clone manually:"
+        print_error "No suitable download tool available (need git, or curl+tar, or wget+tar)"
+        print_info "Please install one of:"
+        print_info "  - git"
+        print_info "  - curl + tar"
+        print_info "  - wget + tar"
+        print_info ""
+        print_info "Or clone manually:"
         print_info "  git clone $GITHUB_REPO"
+        print_info "  cd shared-ssh-agent"
+        print_info "  ./install.sh"
+        rm -rf "$temp_dir"
         exit 1
     fi
     
-    print_success "Downloaded to: $temp_dir"
+    # Verify download
+    if [ ! -d "$temp_dir/lib" ] || [ ! -d "$temp_dir/hooks" ]; then
+        print_error "Downloaded files are incomplete (missing lib/ or hooks/)"
+        print_info "Contents of $temp_dir:"
+        ls -la "$temp_dir" >&2
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+    
     echo "$temp_dir"
 }
 
