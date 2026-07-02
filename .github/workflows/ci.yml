@@ -44,6 +44,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Install zsh if not present
+        if: matrix.shell == 'zsh'
+        run: |
+          if ! command -v zsh >/dev/null 2>&1; then
+            if [ "$RUNNER_OS" = "Linux" ]; then
+              sudo apt-get update && sudo apt-get install -y zsh
+            fi
+          fi
+      
       - name: Set permissions
         run: chmod +x tests/*.sh install.sh uninstall.sh
       
@@ -264,11 +273,20 @@ jobs:
       
       - name: Verify first install
         run: |
-          count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
+          # Check if shared-ssh-agent block exists in .bashrc
+          if ! grep -q "shared-ssh-agent: auto-generated" "$HOME/.bashrc"; then
+            echo "ERROR: No shared-ssh-agent block found in .bashrc"
+            echo "Content of .bashrc:"
+            cat "$HOME/.bashrc"
+            exit 1
+          fi
+          
+          # Count should be 2 (opening and closing markers)
+          count=$(grep -c "shared-ssh-agent:" "$HOME/.bashrc" || echo "0")
           if [ "$count" != "2" ]; then
             echo "ERROR: Expected 2 markers (start+end), found $count"
             echo "Content of .bashrc:"
-            cat "$HOME/.bashrc"
+            grep "shared-ssh-agent" "$HOME/.bashrc" || echo "No matches found"
             exit 1
           fi
           echo "✓ First installation: 2 markers (start+end)"
@@ -278,7 +296,7 @@ jobs:
       
       - name: Verify idempotency
         run: |
-          count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
+          count=$(grep -c "shared-ssh-agent:" "$HOME/.bashrc" || echo "0")
           if [ "$count" != "2" ]; then
             echo "ERROR: Not idempotent - found $count markers instead of 2"
             cat "$HOME/.bashrc"
@@ -291,8 +309,8 @@ jobs:
       
       - name: Verify multi-shell install
         run: |
-          bash_count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
-          zsh_count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.zshrc" || echo "0")
+          bash_count=$(grep -c "shared-ssh-agent:" "$HOME/.bashrc" || echo "0")
+          zsh_count=$(grep -c "shared-ssh-agent:" "$HOME/.zshrc" || echo "0")
           if [ "$bash_count" != "2" ] || [ "$zsh_count" != "2" ]; then
             echo "ERROR: Multi-shell install failed (bash=$bash_count, zsh=$zsh_count, expected 2 each)"
             exit 1
