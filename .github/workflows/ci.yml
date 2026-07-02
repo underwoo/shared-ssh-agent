@@ -84,6 +84,17 @@ jobs:
           fi
           echo "✓ Installation verified"
       
+      - name: Install second shell for testing
+        run: |
+          # Install the opposite shell for second installation test
+          if [ "${{ matrix.shell }}" = "bash" ]; then
+            if ! command -v zsh >/dev/null 2>&1; then
+              if [ "$RUNNER_OS" = "Linux" ]; then
+                sudo apt-get update && sudo apt-get install -y zsh
+              fi
+            fi
+          fi
+      
       - name: Test second installation (add another shell)
         run: |
           if [ "${{ matrix.shell }}" = "bash" ]; then
