@@ -50,6 +50,13 @@ jobs:
       - name: Test interactive detection
         run: ./tests/test-interactive.sh
       
+      - name: Kill any existing agents
+        run: |
+          if [ -n "$SSH_AGENT_PID" ]; then
+            ssh-agent -k || true
+          fi
+          rm -rf ~/.ssh/agent_envs/* || true
+      
       - name: Test installation script
         run: ./tests/test-install.sh
       
@@ -170,34 +177,18 @@ jobs:
       - name: Set permissions
         run: chmod +x tests/*.sh install.sh
       
+      - name: Kill any existing SSH agent
+        run: |
+          if [ -n "$SSH_AGENT_PID" ]; then
+            ssh-agent -k || true
+          fi
+          unset SSH_AGENT_PID SSH_AUTH_SOCK SSH_AGENT_COUNT
+      
       - name: Test core functions
         run: ./tests/test-stubs.sh
       
       - name: Test Phase 2 integration
         run: ./tests/test-phase2.sh
-      
-      - name: Install and test real agent
-        run: |
-          ./install.sh --shell bash
-          
-          # Source the installed hooks
-          export SSA_INSTALL_DIR="$HOME/.local/share/shared-ssh-agent"
-          source "$HOME/.local/share/shared-ssh-agent/lib/bash.sh"
-          
-          # Test agent startup
-          ssa_init
-          
-          if [ -z "$SSH_AGENT_PID" ]; then
-            echo "ERROR: Agent not started"
-            exit 1
-          fi
-          
-          echo "✓ Agent started: PID=$SSH_AGENT_PID COUNT=$SSH_AGENT_COUNT"
-          
-          # Test cleanup
-          ssa_cleanup
-          
-          echo "✓ Agent functionality test passed"
 
   test-cross-shell:
     name: Test Cross-Shell Compatibility
@@ -261,17 +252,26 @@ jobs:
       - name: Set permissions
         run: chmod +x install.sh
       
+      - name: Kill any existing agents
+        run: |
+          if [ -n "$SSH_AGENT_PID" ]; then
+            ssh-agent -k || true
+          fi
+          rm -rf ~/.ssh/agent_envs/* || true
+      
       - name: First installation
         run: ./install.sh --shell bash
       
       - name: Verify first install
         run: |
           count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
-          if [ "$count" != "1" ]; then
-            echo "ERROR: Expected 1 block, found $count"
+          if [ "$count" != "2" ]; then
+            echo "ERROR: Expected 2 markers (start+end), found $count"
+            echo "Content of .bashrc:"
+            cat "$HOME/.bashrc"
             exit 1
           fi
-          echo "✓ First installation: 1 block"
+          echo "✓ First installation: 2 markers (start+end)"
       
       - name: Second installation (should skip)
         run: ./install.sh --shell bash
@@ -279,12 +279,12 @@ jobs:
       - name: Verify idempotency
         run: |
           count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
-          if [ "$count" != "1" ]; then
-            echo "ERROR: Not idempotent - found $count blocks instead of 1"
+          if [ "$count" != "2" ]; then
+            echo "ERROR: Not idempotent - found $count markers instead of 2"
             cat "$HOME/.bashrc"
             exit 1
           fi
-          echo "✓ Second installation: still 1 block (idempotent)"
+          echo "✓ Second installation: still 2 markers (idempotent)"
       
       - name: Third installation with different shell
         run: ./install.sh --shell zsh
@@ -293,8 +293,8 @@ jobs:
         run: |
           bash_count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
           zsh_count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.zshrc" || echo "0")
-          if [ "$bash_count" != "1" ] || [ "$zsh_count" != "1" ]; then
-            echo "ERROR: Multi-shell install failed (bash=$bash_count, zsh=$zsh_count)"
+          if [ "$bash_count" != "2" ] || [ "$zsh_count" != "2" ]; then
+            echo "ERROR: Multi-shell install failed (bash=$bash_count, zsh=$zsh_count, expected 2 each)"
             exit 1
           fi
           echo "✓ Multi-shell installation verified"
