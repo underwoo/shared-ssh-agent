@@ -388,6 +388,22 @@ copy_files() {
     
     print_info "Installing files to: $INSTALL_DIR"
     
+    # Debug: show what we're working with
+    if [ "$BOOTSTRAP_MODE" = "true" ]; then
+        print_info "Source directory: $SCRIPT_DIR"
+        print_info "Checking source directories..."
+        if [ -d "$SCRIPT_DIR/lib" ]; then
+            print_info "  ✓ lib/ exists"
+        else
+            print_error "  ✗ lib/ missing at $SCRIPT_DIR/lib"
+        fi
+        if [ -d "$SCRIPT_DIR/hooks" ]; then
+            print_info "  ✓ hooks/ exists"
+        else
+            print_error "  ✗ hooks/ missing at $SCRIPT_DIR/hooks"
+        fi
+    fi
+    
     # Create installation directory
     mkdir -p "$INSTALL_DIR"
     
@@ -398,6 +414,9 @@ copy_files() {
             print_success "Copied: $dir/"
         else
             print_error "Missing directory: $dir/"
+            print_error "SCRIPT_DIR is: $SCRIPT_DIR"
+            print_error "Contents of SCRIPT_DIR:"
+            ls -la "$SCRIPT_DIR" || echo "Cannot list $SCRIPT_DIR"
             exit 1
         fi
     done
