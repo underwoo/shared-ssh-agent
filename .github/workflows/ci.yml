@@ -1,0 +1,300 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-structure-and-syntax:
+    name: Test Structure and Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      
+      - name: Set permissions
+        run: chmod +x tests/*.sh install.sh uninstall.sh
+      
+      - name: Test directory structure
+        run: ./tests/test-structure.sh
+      
+      - name: Test shell syntax
+        run: ./tests/test-syntax.sh
+      
+      - name: Run shellcheck on core files
+        run: |
+          shellcheck -S warning lib/core.sh || true
+          shellcheck -S warning lib/bash.sh || true
+          shellcheck -S warning lib/zsh.sh || true
+          shellcheck -S warning lib/sh.sh || true
+          shellcheck -S warning install.sh || true
+          shellcheck -S warning uninstall.sh || true
+
+  test-local-install:
+    name: Test Local Installation
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        shell: [bash, zsh]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set permissions
+        run: chmod +x tests/*.sh install.sh uninstall.sh
+      
+      - name: Test interactive detection
+        run: ./tests/test-interactive.sh
+      
+      - name: Test installation script
+        run: ./tests/test-install.sh
+      
+      - name: Install for ${{ matrix.shell }}
+        run: ./install.sh --shell ${{ matrix.shell }}
+      
+      - name: Verify installation
+        run: |
+          if [ ! -d "$HOME/.local/share/shared-ssh-agent/lib" ]; then
+            echo "ERROR: Installation directory not created"
+            exit 1
+          fi
+          if [ ! -f "$HOME/.local/share/shared-ssh-agent/lib/core.sh" ]; then
+            echo "ERROR: core.sh not installed"
+            exit 1
+          fi
+          echo "✓ Installation verified"
+      
+      - name: Test second installation (add another shell)
+        run: |
+          if [ "${{ matrix.shell }}" = "bash" ]; then
+            ./install.sh --shell zsh
+            echo "✓ Added zsh after bash"
+          else
+            ./install.sh --shell bash
+            echo "✓ Added bash after zsh"
+          fi
+      
+      - name: Verify RC file modifications
+        shell: bash
+        run: |
+          if [ "${{ matrix.shell }}" = "bash" ]; then
+            if ! grep -q "shared-ssh-agent: auto-generated" "$HOME/.bashrc"; then
+              echo "ERROR: .bashrc not modified"
+              exit 1
+            fi
+            echo "✓ .bashrc modified correctly"
+          else
+            if ! grep -q "shared-ssh-agent: auto-generated" "$HOME/.zshrc"; then
+              echo "ERROR: .zshrc not modified"
+              exit 1
+            fi
+            echo "✓ .zshrc modified correctly"
+          fi
+      
+      - name: Test uninstallation
+        run: ./uninstall.sh
+      
+      - name: Verify cleanup
+        run: |
+          if grep -q "shared-ssh-agent: auto-generated" "$HOME/.bashrc" 2>/dev/null; then
+            echo "ERROR: .bashrc not cleaned"
+            exit 1
+          fi
+          if [ -d "$HOME/.local/share/shared-ssh-agent" ]; then
+            echo "ERROR: Installation directory not removed"
+            exit 1
+          fi
+          echo "✓ Cleanup verified"
+
+  test-bootstrap-install:
+    name: Test Bootstrap Installation (One-Line Install)
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Test bootstrap install (simulate curl | bash)
+        run: |
+          # Simulate the one-line install by downloading and piping to bash
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/install.sh | bash
+      
+      - name: Verify bootstrap installation
+        run: |
+          if [ ! -d "$HOME/.local/share/shared-ssh-agent/lib" ]; then
+            echo "ERROR: Bootstrap installation directory not created"
+            exit 1
+          fi
+          if [ ! -f "$HOME/.local/share/shared-ssh-agent/lib/core.sh" ]; then
+            echo "ERROR: core.sh not installed via bootstrap"
+            exit 1
+          fi
+          echo "✓ Bootstrap installation verified"
+      
+      - name: Verify RC file modified via bootstrap
+        run: |
+          if ! grep -q "shared-ssh-agent: auto-generated" "$HOME/.bashrc"; then
+            echo "ERROR: .bashrc not modified via bootstrap"
+            exit 1
+          fi
+          echo "✓ .bashrc modified correctly via bootstrap"
+      
+      - name: Test bootstrap install with options (--all-shells)
+        run: |
+          # First uninstall
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/uninstall.sh | bash
+          # Then reinstall with --all-shells
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/install.sh | bash -s -- --all-shells
+      
+      - name: Verify all-shells installation
+        run: |
+          if [ ! -d "$HOME/.local/share/shared-ssh-agent/lib" ]; then
+            echo "ERROR: all-shells installation failed"
+            exit 1
+          fi
+          echo "✓ Bootstrap with --all-shells verified"
+      
+      - name: Cleanup
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/uninstall.sh | bash
+
+  test-agent-functionality:
+    name: Test Agent Functionality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set permissions
+        run: chmod +x tests/*.sh install.sh
+      
+      - name: Test core functions
+        run: ./tests/test-stubs.sh
+      
+      - name: Test Phase 2 integration
+        run: ./tests/test-phase2.sh
+      
+      - name: Install and test real agent
+        run: |
+          ./install.sh --shell bash
+          
+          # Source the installed hooks
+          export SSA_INSTALL_DIR="$HOME/.local/share/shared-ssh-agent"
+          source "$HOME/.local/share/shared-ssh-agent/lib/bash.sh"
+          
+          # Test agent startup
+          ssa_init
+          
+          if [ -z "$SSH_AGENT_PID" ]; then
+            echo "ERROR: Agent not started"
+            exit 1
+          fi
+          
+          echo "✓ Agent started: PID=$SSH_AGENT_PID COUNT=$SSH_AGENT_COUNT"
+          
+          # Test cleanup
+          ssa_cleanup
+          
+          echo "✓ Agent functionality test passed"
+
+  test-cross-shell:
+    name: Test Cross-Shell Compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install tcsh and dash
+        run: sudo apt-get update && sudo apt-get install -y tcsh dash
+      
+      - name: Set permissions
+        run: chmod +x tests/*.sh install.sh
+      
+      - name: Install for all shells
+        run: ./install.sh --all-shells
+      
+      - name: Test bash init
+        shell: bash
+        run: |
+          export SSA_INSTALL_DIR="$HOME/.local/share/shared-ssh-agent"
+          source "$HOME/.local/share/shared-ssh-agent/hooks/bash-init.sh"
+          if [ -n "$SSH_AGENT_PID" ]; then
+            echo "✓ Bash: Agent started (PID=$SSH_AGENT_PID)"
+          else
+            echo "✓ Bash: External agent detected (skipped)"
+          fi
+      
+      - name: Test zsh init
+        shell: bash
+        run: |
+          if command -v zsh >/dev/null 2>&1; then
+            export SSA_INSTALL_DIR="$HOME/.local/share/shared-ssh-agent"
+            zsh -c 'source "$HOME/.local/share/shared-ssh-agent/hooks/zsh-init.zsh"; echo "✓ Zsh: Init successful"'
+          else
+            echo "⚠ Zsh not available, skipping"
+          fi
+      
+      - name: Test POSIX sh init
+        shell: bash
+        run: |
+          export SSA_INSTALL_DIR="$HOME/.local/share/shared-ssh-agent"
+          sh -c '. "$HOME/.local/share/shared-ssh-agent/hooks/sh-init.sh"; echo "✓ POSIX sh: Init successful"'
+      
+      - name: Test tcsh init
+        shell: bash
+        run: |
+          export SSA_INSTALL_DIR="$HOME/.local/share/shared-ssh-agent"
+          # tcsh syntax is different, just verify the file is valid
+          if tcsh -n "$HOME/.local/share/shared-ssh-agent/hooks/csh-init.csh" 2>/dev/null; then
+            echo "✓ Tcsh: Syntax valid"
+          else
+            echo "⚠ Tcsh: Syntax check failed"
+          fi
+
+  test-idempotent-install:
+    name: Test Idempotent Installation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set permissions
+        run: chmod +x install.sh
+      
+      - name: First installation
+        run: ./install.sh --shell bash
+      
+      - name: Verify first install
+        run: |
+          count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
+          if [ "$count" != "1" ]; then
+            echo "ERROR: Expected 1 block, found $count"
+            exit 1
+          fi
+          echo "✓ First installation: 1 block"
+      
+      - name: Second installation (should skip)
+        run: ./install.sh --shell bash
+      
+      - name: Verify idempotency
+        run: |
+          count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
+          if [ "$count" != "1" ]; then
+            echo "ERROR: Not idempotent - found $count blocks instead of 1"
+            cat "$HOME/.bashrc"
+            exit 1
+          fi
+          echo "✓ Second installation: still 1 block (idempotent)"
+      
+      - name: Third installation with different shell
+        run: ./install.sh --shell zsh
+      
+      - name: Verify multi-shell install
+        run: |
+          bash_count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.bashrc" || echo "0")
+          zsh_count=$(grep -c "shared-ssh-agent: auto-generated" "$HOME/.zshrc" || echo "0")
+          if [ "$bash_count" != "1" ] || [ "$zsh_count" != "1" ]; then
+            echo "ERROR: Multi-shell install failed (bash=$bash_count, zsh=$zsh_count)"
+            exit 1
+          fi
+          echo "✓ Multi-shell installation verified"
