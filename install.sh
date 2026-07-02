@@ -296,69 +296,72 @@ source \"${INSTALL_DIR}/hooks/${shell}-init.${ext}\""
 
 # Bootstrap: download repo if needed
 bootstrap_download() {
-    print_info "Downloading shared-ssh-agent from GitHub..."
-    
     local temp_dir="/tmp/shared-ssh-agent-bootstrap-$$"
+    
+    print_info "Downloading shared-ssh-agent from GitHub..." >&2
+    
     mkdir -p "$temp_dir" || {
-        print_error "Failed to create temp directory"
-        exit 1
+        print_error "Failed to create temp directory" >&2
+        return 1
     }
     
-    # Try git first, then curl + tar
+    # Try git first, then curl + tar, then wget + tar
     if command -v git >/dev/null 2>&1; then
-        print_info "Using git to clone repository..."
-        if git clone --depth 1 "$GITHUB_REPO" "$temp_dir" 2>&1; then
-            print_success "Downloaded successfully"
+        print_info "Using git to clone repository..." >&2
+        if git clone --depth 1 "$GITHUB_REPO" "$temp_dir" >&2 2>&1; then
+            print_success "Downloaded successfully" >&2
         else
-            print_error "Failed to clone repository"
+            print_error "Failed to clone repository" >&2
             rm -rf "$temp_dir"
-            exit 1
+            return 1
         fi
     elif command -v curl >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
-        print_info "Using curl to download tarball..."
-        if curl -fsSL "${GITHUB_REPO%.git}/archive/refs/heads/main.tar.gz" | \
-            tar -xz -C "$temp_dir" --strip-components=1 2>&1; then
-            print_success "Downloaded successfully"
+        print_info "Using curl to download tarball..." >&2
+        if curl -fsSL "${GITHUB_REPO%.git}/archive/refs/heads/main.tar.gz" 2>&2 | \
+            tar -xz -C "$temp_dir" --strip-components=1 2>&2; then
+            print_success "Downloaded successfully" >&2
         else
-            print_error "Failed to download tarball"
+            print_error "Failed to download tarball" >&2
             rm -rf "$temp_dir"
-            exit 1
+            return 1
         fi
     elif command -v wget >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
-        print_info "Using wget to download tarball..."
-        if wget -qO- "${GITHUB_REPO%.git}/archive/refs/heads/main.tar.gz" | \
-            tar -xz -C "$temp_dir" --strip-components=1 2>&1; then
-            print_success "Downloaded successfully"
+        print_info "Using wget to download tarball..." >&2
+        if wget -qO- "${GITHUB_REPO%.git}/archive/refs/heads/main.tar.gz" 2>&2 | \
+            tar -xz -C "$temp_dir" --strip-components=1 2>&2; then
+            print_success "Downloaded successfully" >&2
         else
-            print_error "Failed to download tarball"
+            print_error "Failed to download tarball" >&2
             rm -rf "$temp_dir"
-            exit 1
+            return 1
         fi
     else
-        print_error "No suitable download tool available (need git, or curl+tar, or wget+tar)"
-        print_info "Please install one of:"
-        print_info "  - git"
-        print_info "  - curl + tar"
-        print_info "  - wget + tar"
-        print_info ""
-        print_info "Or clone manually:"
-        print_info "  git clone $GITHUB_REPO"
-        print_info "  cd shared-ssh-agent"
-        print_info "  ./install.sh"
+        print_error "No suitable download tool available (need git, or curl+tar, or wget+tar)" >&2
+        print_info "Please install one of:" >&2
+        print_info "  - git" >&2
+        print_info "  - curl + tar" >&2
+        print_info "  - wget + tar" >&2
+        print_info "" >&2
+        print_info "Or clone manually:" >&2
+        print_info "  git clone $GITHUB_REPO" >&2
+        print_info "  cd shared-ssh-agent" >&2
+        print_info "  ./install.sh" >&2
         rm -rf "$temp_dir"
-        exit 1
+        return 1
     fi
     
     # Verify download
     if [ ! -d "$temp_dir/lib" ] || [ ! -d "$temp_dir/hooks" ]; then
-        print_error "Downloaded files are incomplete (missing lib/ or hooks/)"
-        print_info "Contents of $temp_dir:"
+        print_error "Downloaded files are incomplete (missing lib/ or hooks/)" >&2
+        print_info "Contents of $temp_dir:" >&2
         ls -la "$temp_dir" >&2
         rm -rf "$temp_dir"
-        exit 1
+        return 1
     fi
     
+    # Return the temp dir path (stdout only)
     echo "$temp_dir"
+    return 0
 }
 
 # Check if we're being piped from curl (bootstrap mode)
@@ -456,7 +459,12 @@ main() {
         print_info "Bootstrap mode detected (installing from GitHub)"
         if [ "$dry_run" != "true" ]; then
             temp_dir=$(bootstrap_download)
+            if [ $? -ne 0 ] || [ -z "$temp_dir" ]; then
+                print_error "Bootstrap download failed"
+                exit 1
+            fi
             SCRIPT_DIR="$temp_dir"
+            print_info "Using downloaded files from: $SCRIPT_DIR"
         else
             print_info "[DRY RUN] Would download repository from GitHub"
         fi
