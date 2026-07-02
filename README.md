@@ -19,6 +19,23 @@
 
 ## Quick Start
 
+### One-Line Install (from GitHub)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/underwoo/shared-ssh-agent/main/install.sh | bash
+```
+
+With options:
+```bash
+# Install for all shells
+curl -fsSL https://raw.githubusercontent.com/underwoo/shared-ssh-agent/main/install.sh | bash -s -- --all-shells
+
+# Install for specific shells
+curl -fsSL https://raw.githubusercontent.com/underwoo/shared-ssh-agent/main/install.sh | bash -s -- --shell bash --shell zsh
+```
+
+### Manual Install (from clone)
+
 ```bash
 # Clone the repository
 git clone https://github.com/underwoo/shared-ssh-agent.git
@@ -26,6 +43,9 @@ cd shared-ssh-agent
 
 # Install for your current shell
 ./install.sh
+
+# Or install for all detected shells
+./install.sh --all-shells
 
 # Reload your shell or open a new terminal
 ```

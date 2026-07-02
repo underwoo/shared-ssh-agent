@@ -1,6 +1,13 @@
 #!/bin/bash
 # Installation script for shared-ssh-agent
 # Universal SSH agent sharing across shells and sessions
+#
+# Can be run directly from GitHub:
+#   curl -fsSL https://raw.githubusercontent.com/underwoo/shared-ssh-agent/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/underwoo/shared-ssh-agent/main/install.sh | bash -s -- --all-shells
+#
+# Or from a local clone:
+#   ./install.sh
 
 set -e
 
@@ -29,6 +36,13 @@ SHELLS_TO_INSTALL=()
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# GitHub repository
+GITHUB_REPO="https://github.com/underwoo/shared-ssh-agent.git"
+GITHUB_RAW="https://raw.githubusercontent.com/underwoo/shared-ssh-agent/main"
+
+# Bootstrap mode detection
+BOOTSTRAP_MODE=false
 
 # Usage
 usage() {
@@ -280,6 +294,53 @@ source \"${INSTALL_DIR}/hooks/${shell}-init.${ext}\""
     fi
 }
 
+# Bootstrap: download repo if needed
+bootstrap_download() {
+    print_info "Downloading shared-ssh-agent from GitHub..."
+    
+    local temp_dir="/tmp/shared-ssh-agent-bootstrap-$$"
+    mkdir -p "$temp_dir"
+    
+    # Try git first, then curl + tar
+    if command -v git >/dev/null 2>&1; then
+        print_info "Using git to clone repository..."
+        git clone --depth 1 "$GITHUB_REPO" "$temp_dir" >/dev/null 2>&1 || {
+            print_error "Failed to clone repository"
+            rm -rf "$temp_dir"
+            exit 1
+        }
+    elif command -v curl >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
+        print_info "Using curl to download tarball..."
+        curl -fsSL "${GITHUB_REPO%.git}/archive/refs/heads/main.tar.gz" | \
+            tar -xz -C "$temp_dir" --strip-components=1 2>/dev/null || {
+            print_error "Failed to download tarball"
+            rm -rf "$temp_dir"
+            exit 1
+        }
+    else
+        print_error "Neither git nor curl+tar available for downloading"
+        print_info "Please install git or curl, or clone manually:"
+        print_info "  git clone $GITHUB_REPO"
+        exit 1
+    fi
+    
+    print_success "Downloaded to: $temp_dir"
+    echo "$temp_dir"
+}
+
+# Check if we're being piped from curl (bootstrap mode)
+detect_bootstrap_mode() {
+    # Check if stdin is a pipe or if SCRIPT_DIR doesn't have the required files
+    if [ ! -t 0 ] || [ ! -d "$SCRIPT_DIR/lib" ] || [ ! -d "$SCRIPT_DIR/hooks" ]; then
+        # Additional check: if $0 is bash or contains 'bash', we're likely piped
+        if [[ "$0" == *bash* ]] || [ "$0" = "-bash" ] || [ ! -d "$SCRIPT_DIR/lib" ]; then
+            BOOTSTRAP_MODE=true
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # Copy files to installation directory
 copy_files() {
     local dry_run="$1"
@@ -325,6 +386,7 @@ main() {
     local auto_detect="true"
     local all_shells="false"
     local requested_shells=()
+    local temp_dir=""
     
     # Parse arguments
     while [ $# -gt 0 ]; do
@@ -355,6 +417,18 @@ main() {
         esac
         shift
     done
+    
+    # Detect bootstrap mode and download if needed
+    if detect_bootstrap_mode; then
+        print_info "Bootstrap mode detected (installing from GitHub)"
+        if [ "$dry_run" != "true" ]; then
+            temp_dir=$(bootstrap_download)
+            SCRIPT_DIR="$temp_dir"
+        else
+            print_info "[DRY RUN] Would download repository from GitHub"
+        fi
+        echo ""
+    fi
     
     # Set installation directory
     if [ -z "$INSTALL_DIR" ]; then
@@ -418,6 +492,12 @@ main() {
         echo ""
     done
     
+    # Cleanup temp directory if bootstrap mode
+    if [ -n "$temp_dir" ] && [ -d "$temp_dir" ]; then
+        print_info "Cleaning up temporary files..."
+        rm -rf "$temp_dir"
+    fi
+    
     echo ""
     echo "=== Installation Complete ==="
     echo ""
@@ -434,7 +514,12 @@ main() {
         echo "  export SSA_DEBUG=1                # Enable debug logging (~/.shared-ssh-agent.log)"
         echo "  export SSA_ENABLE_NONINTERACTIVE=1  # Enable for non-interactive shells (not recommended)"
         echo ""
-        echo "To uninstall, run: $SCRIPT_DIR/uninstall.sh"
+        if [ "$BOOTSTRAP_MODE" = "true" ]; then
+            echo "To uninstall, run:"
+            echo "  curl -fsSL $GITHUB_RAW/uninstall.sh | bash"
+        else
+            echo "To uninstall, run: $SCRIPT_DIR/uninstall.sh"
+        fi
     else
         print_info "This was a dry run. Run without --dry-run to apply changes."
     fi
