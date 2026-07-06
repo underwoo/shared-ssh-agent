@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Self-update script (`update.sh`) for updating to latest version
+- Support for both git-based and bootstrap installations
+- Update version checking via `--check` flag
+- Documentation for update workflow and optional shell aliases
+
 ## [1.0.0] - 2026-07-02
 
 ### Added

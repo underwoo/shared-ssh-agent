@@ -94,6 +94,42 @@ EXAMPLES:
     ./install.sh --prefix ~/.ssh-agent    # Custom installation directory
 ```
 
+## Updating
+
+### Update to Latest Version
+
+```bash
+# Update from default installation location
+~/.local/share/shared-ssh-agent/update.sh
+
+# Or check if updates are available
+~/.local/share/shared-ssh-agent/update.sh --check
+
+# Update custom installation
+~/.local/share/shared-ssh-agent/update.sh --prefix ~/.ssh-agent
+```
+
+The update method depends on how you installed:
+- **Git clone**: Pulls latest changes via `git pull`
+- **Bootstrap (curl)**: Re-downloads from GitHub
+
+### Optional: Add Convenient Alias
+
+Add to your shell RC file for easy updates:
+
+```bash
+# bash/zsh
+alias ssa-update='~/.local/share/shared-ssh-agent/update.sh'
+
+# fish
+alias ssa-update='~/.local/share/shared-ssh-agent/update.sh'
+
+# csh/tcsh
+alias ssa-update ~/.local/share/shared-ssh-agent/update.sh
+```
+
+Then simply run `ssa-update` to update.
+
 ## Configuration
 
 Set these environment variables in your shell RC file **before** the shared-ssh-agent block:
