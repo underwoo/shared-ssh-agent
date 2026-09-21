@@ -103,7 +103,7 @@ echo
 get_current_version() {
     if [ -f "$INSTALL_DIR/CHANGELOG.md" ]; then
         # Extract version from CHANGELOG.md
-        grep -m 1 "^## \[" "$INSTALL_DIR/CHANGELOG.md" | sed 's/.*\[\([^]]*\)\].*/\1/' || echo "unknown"
+        grep -m 1 "^## \[[0-9]" "$INSTALL_DIR/CHANGELOG.md" | sed 's/.*\[\([^]]*\)\].*/\1/' || echo "unknown"
     else
         echo "unknown"
     fi

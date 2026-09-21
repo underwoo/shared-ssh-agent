@@ -20,7 +20,7 @@ _ssa_lock() {
     _ssa_tries=0
     
     while [ $_ssa_tries -lt 10 ]; do
-        if mkdir "$_ssa_lockdir" 2>/dev/null; then
+        if command mkdir "$_ssa_lockdir" >/dev/null 2>&1; then
             _ssa_log "Lock acquired"
             return 0
         fi
@@ -65,7 +65,7 @@ _ssa_start_new_agent() {
     
     # Ensure agent_envs directory exists
     if [ ! -e "$SSA_AGENT_ENV_DIR" ]; then
-        mkdir -p "$SSA_AGENT_ENV_DIR" 2>/dev/null || {
+        command mkdir -p "$SSA_AGENT_ENV_DIR" >/dev/null 2>&1 || {
             _ssa_log "Failed to create $SSA_AGENT_ENV_DIR"
             return 1
         }

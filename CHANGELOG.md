@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-21
+
 ### Added
 - Self-update script (`update.sh`) for updating to latest version
 - Support for both git-based and bootstrap installations
 - Update version checking via `--check` flag
 - Documentation for update workflow and optional shell aliases
+
+### Fixed
+- Silence `mkdir` output when it is aliased with `-v` (or similar) by calling `command mkdir` and discarding stdout as well as stderr
 
 ## [1.0.0] - 2026-07-02
 
@@ -91,5 +96,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG following Keep a Changelog format
 - Prepared for v1.0.0 release
 
-[Unreleased]: https://github.com/underwoo/shared-ssh-agent/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/underwoo/shared-ssh-agent/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/underwoo/shared-ssh-agent/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/underwoo/shared-ssh-agent/releases/tag/v1.0.0
