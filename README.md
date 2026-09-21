@@ -113,6 +113,16 @@ The update method depends on how you installed:
 - **Git clone**: Pulls latest changes via `git pull`
 - **Bootstrap (curl)**: Re-downloads from GitHub
 
+### Upgrading from 1.0.0
+
+Version 1.0.0 did not install `update.sh`. Re-run the installer once (use the same `--prefix` if you originally set one):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/underwoo/shared-ssh-agent/main/install.sh | bash
+```
+
+This refreshes the installed files and adds `update.sh`. Your shell RC files are left unchanged. Use `update.sh` for future updates.
+
 ### Optional: Add Convenient Alias
 
 Add to your shell RC file for easy updates:

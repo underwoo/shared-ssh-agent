@@ -422,15 +422,21 @@ copy_files() {
     done
     
     # Copy documentation
-    for file in README.md LICENSE ARCHITECTURE.md; do
+    for file in README.md LICENSE ARCHITECTURE.md CHANGELOG.md; do
         if [ -f "$SCRIPT_DIR/$file" ]; then
             cp "$SCRIPT_DIR/$file" "$INSTALL_DIR/"
         fi
     done
     
+    # Copy update script
+    if [ -f "$SCRIPT_DIR/update.sh" ]; then
+        cp "$SCRIPT_DIR/update.sh" "$INSTALL_DIR/"
+    fi
+    
     # Set permissions
     chmod 644 "$INSTALL_DIR"/lib/*
     chmod 755 "$INSTALL_DIR"/hooks/*
+    [ -f "$INSTALL_DIR/update.sh" ] && chmod 755 "$INSTALL_DIR/update.sh"
     
     print_success "Files installed successfully"
 }

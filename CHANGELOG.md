@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-21
+
+### Fixed
+- `install.sh` now installs `update.sh` and `CHANGELOG.md` into the installation directory, so `update.sh` can run and report the installed version
+
+### Documentation
+- Added upgrade instructions for installations made with v1.0.0
+
 ## [1.1.0] - 2026-09-21
 
 ### Added
@@ -96,6 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG following Keep a Changelog format
 - Prepared for v1.0.0 release
 
-[Unreleased]: https://github.com/underwoo/shared-ssh-agent/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/underwoo/shared-ssh-agent/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/underwoo/shared-ssh-agent/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/underwoo/shared-ssh-agent/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/underwoo/shared-ssh-agent/releases/tag/v1.0.0
