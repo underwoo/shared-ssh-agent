@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-21
+
+### Fixed
+- `update.sh` no longer exits with status 1 after a successful update when some shells are not configured (`check_shell_configured` returning non-zero aborted the script under `set -e`)
+
 ## [1.1.1] - 2026-09-21
 
 ### Fixed
@@ -104,7 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG following Keep a Changelog format
 - Prepared for v1.0.0 release
 
-[Unreleased]: https://github.com/underwoo/shared-ssh-agent/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/underwoo/shared-ssh-agent/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/underwoo/shared-ssh-agent/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/underwoo/shared-ssh-agent/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/underwoo/shared-ssh-agent/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/underwoo/shared-ssh-agent/releases/tag/v1.0.0

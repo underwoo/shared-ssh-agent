@@ -218,12 +218,12 @@ check_shell_configured() {
     return 1
 }
 
-check_shell_configured "bash" ".bashrc"
-check_shell_configured "zsh" ".zshrc"
-check_shell_configured "fish" ".config/fish/config.fish"
-check_shell_configured "csh" ".cshrc"
-check_shell_configured "tcsh" ".tcshrc"
-check_shell_configured "sh" ".profile"
+check_shell_configured "bash" ".bashrc" || true
+check_shell_configured "zsh" ".zshrc" || true
+check_shell_configured "fish" ".config/fish/config.fish" || true
+check_shell_configured "csh" ".cshrc" || true
+check_shell_configured "tcsh" ".tcshrc" || true
+check_shell_configured "sh" ".profile" || true
 
 if [ ${#CONFIGURED_SHELLS[@]} -eq 0 ]; then
     echo -e "${YELLOW}Warning: No shells appear to be configured${NC}"
